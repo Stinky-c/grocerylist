@@ -27,8 +27,8 @@ dotenvy = "0.15.7"
 
 utoipa-axum = "0.3"
 utoipa = { version = "6.0" }
-axum = { version = "0.8.9", features = ["default", "macros", "json", "http2"] }
-
+axum = { version = "0.8.9", features = ["default", "macros", "json", "http2", "tracing"] }
+tower-http = { version = "0.7", features = ["timeout", "trace"] }
 
 
 # Swagger deps

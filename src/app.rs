@@ -1,12 +1,16 @@
+use crate::routes;
 use crate::state::ApiState;
 use axum::Router;
+use axum::http::StatusCode;
 use sqlx::migrate::Migrator;
 use std::sync::Arc;
+use std::time::Duration;
+use tower_http::timeout::TimeoutLayer;
+use tower_http::trace::TraceLayer;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 use utoipa::openapi::OpenApi;
 use utoipa_axum::router::OpenApiRouter;
-use crate::routes;
 
 static MIGRATOR: Migrator = sqlx::migrate!();
 
@@ -42,7 +46,10 @@ pub async fn make_app() -> (Router, OpenApi) {
         .with_state(Arc::new(state))
         .split_for_parts();
 
-    let app: Router = Router::new().nest("/api/v1/", router);
+    let app: Router = Router::new().nest("/api/v1/", router).layer((
+        TraceLayer::new_for_http(),
+        TimeoutLayer::with_status_code(StatusCode::REQUEST_TIMEOUT, Duration::from_secs(10)),
+    ));
 
     #[cfg(feature = "swagger")]
     let app = {
