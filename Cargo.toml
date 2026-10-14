@@ -3,4 +3,41 @@ name = "grocerylist"
 version = "0.1.0"
 edition = "2024"
 
+default-run = "grocerylist"
+
+[[bin]]
+name = "gen-doc"
+path = "src/bin/doc.rs"
+
+[[bin]]
+name = "grocerylist"
+path = "src/bin/serve.rs"
+
+
 [dependencies]
+sqlx = { version = "0.9.0", features = ["chrono", "runtime-tokio", "postgres", "migrate", "macros", ] }
+serde = { version = "1" }
+tokio = { version = "1.0", features = ["full"] }
+tracing = "0.1"
+chrono = { version = "0.4", features = ["serde", "now"] }
+
+
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+dotenvy = "0.15.7"
+
+utoipa-axum = "0.3"
+utoipa = { version = "6.0" }
+axum = { version = "0.8.9", features = ["default", "macros", "json", "http2"] }
+
+
+
+# Swagger deps
+utoipa-swagger-ui = { version = "10", features = ["axum", "vendored"], optional = true }
+
+[features]
+swagger = ["dep:utoipa-swagger-ui"]
+
+
+
+[profile.dev.package.sqlx-macros]
+opt-level = 3
