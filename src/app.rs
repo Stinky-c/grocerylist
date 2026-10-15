@@ -1,3 +1,4 @@
+use crate::config::AppConfig;
 use crate::routes;
 use crate::state::ApiState;
 use axum::Router;
@@ -25,20 +26,22 @@ pub async fn make_app() -> (Router, OpenApi) {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    let db_url = std::env::var("DATABASE_URL").unwrap();
+    let config = AppConfig::load();
 
     let pool = sqlx::postgres::PgPoolOptions::new()
-        .max_connections(5)
-        .connect(&db_url)
+        .max_connections(config.database_max_connections)
+        .connect(&config.database_url)
         .await
         .unwrap();
 
     MIGRATOR.run(&pool).await.unwrap();
 
+    let (jwt_enc, jwt_dec) = config.jwt_pair();
+
     let state = ApiState {
         pool,
-        jwt_decode: Arc::new(jsonwebtoken::DecodingKey::from_secret(b"helloworld")),
-        jwt_encode: Arc::new(jsonwebtoken::EncodingKey::from_secret(b"helloworld")),
+        jwt_decode: Arc::new(jwt_dec),
+        jwt_encode: Arc::new(jwt_enc),
         jwt_validation: Arc::new(jsonwebtoken::Validation::new(
             jsonwebtoken::Algorithm::HS256,
         )),

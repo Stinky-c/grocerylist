@@ -23,6 +23,9 @@ chrono = { version = "0.4", features = ["serde", "now"] }
 
 jsonwebtoken = { version = "11.1.0" }
 
+figment = { version = "0.10", features = ["env", "toml"] }
+figment_file_provider_adapter = { version = "0.1" }
+
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 dotenvy = "0.15.7"
 

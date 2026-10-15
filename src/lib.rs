@@ -4,6 +4,7 @@ use utoipa::ToSchema;
 
 pub mod app;
 pub mod auth;
+pub mod config;
 pub mod models;
 pub mod routes;
 pub mod state;
@@ -14,8 +15,8 @@ pub struct ApiErrorResponse {
 }
 
 impl ApiErrorResponse {
-    pub fn new(msg: String) -> Self {
-        ApiErrorResponse { message: msg }
+    pub fn new(message: String) -> Self {
+        ApiErrorResponse { message }
     }
 
     pub fn json(self) -> Json<Self> {
