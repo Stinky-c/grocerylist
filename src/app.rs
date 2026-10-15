@@ -35,7 +35,14 @@ pub async fn make_app() -> (Router, OpenApi) {
 
     MIGRATOR.run(&pool).await.unwrap();
 
-    let state = ApiState { pool };
+    let state = ApiState {
+        pool,
+        jwt_decode: Arc::new(jsonwebtoken::DecodingKey::from_secret(b"helloworld")),
+        jwt_encode: Arc::new(jsonwebtoken::EncodingKey::from_secret(b"helloworld")),
+        jwt_validation: Arc::new(jsonwebtoken::Validation::new(
+            jsonwebtoken::Algorithm::HS256,
+        )),
+    };
 
     // build our application with some routes
     let (router, api) = OpenApiRouter::new()

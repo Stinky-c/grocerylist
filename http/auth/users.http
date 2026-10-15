@@ -1,0 +1,8 @@
+POST localhost:3000/api/v1/auth/create
+Content-Type: application/json
+
+{
+  "username": "test",
+  "password": "test",
+  "email": "test@example.com"
+}

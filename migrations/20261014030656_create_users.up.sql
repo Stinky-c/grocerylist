@@ -1,4 +1,3 @@
--- Add up migration script here
 CREATE TABLE users
 (
     id            bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
