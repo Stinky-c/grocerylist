@@ -1,3 +1,4 @@
+use argon2::{Algorithm, Argon2, Params, Version};
 use figment::Figment;
 use figment::providers::{Env, Format, Toml};
 use figment_file_provider_adapter::FileAdapter;
@@ -28,6 +29,10 @@ impl AppConfig {
             EncodingKey::from_secret(self.jwt_secret.as_ref()),
             DecodingKey::from_secret(self.jwt_secret.as_ref()),
         )
+    }
+
+    pub fn password_hasher(&self) -> Argon2<'static> {
+        Argon2::new(Algorithm::default(), Version::default(), Params::default())
     }
 }
 

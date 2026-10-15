@@ -1,21 +1,20 @@
 use crate::ApiErrorResponse;
-use crate::auth::jwt::Claims;
-use crate::state::{ApiState, AxumApiState};
+use crate::auth::jwt::Claim;
+use crate::state::AxumApiState;
 use axum::Json;
 use axum::extract::FromRequestParts;
 use axum::http::StatusCode;
 use axum::http::request::Parts;
-use axum::response::IntoResponse;
 use axum_extra::TypedHeader;
 use jsonwebtoken::errors::ErrorKind;
-use std::sync::Arc;
 
 type BearerAuthorization =
     axum_extra::headers::Authorization<axum_extra::headers::authorization::Bearer>;
 
-pub struct MaybeJwt(pub Option<Claims>);
-
-pub struct Jwt(pub Claims);
+pub struct Jwt {
+    pub claim: Claim,
+    pub header: jsonwebtoken::Header,
+}
 
 impl FromRequestParts<AxumApiState> for Jwt {
     type Rejection = (StatusCode, Json<ApiErrorResponse>);
@@ -33,20 +32,22 @@ impl FromRequestParts<AxumApiState> for Jwt {
                 )
             })?;
 
-        let token = jsonwebtoken::decode::<Claims>(
-            header.token().to_string(),
+        let token = jsonwebtoken::decode::<Claim>(
+            header.token(),
             &state.jwt_decode,
             &state.jwt_validation,
         )
         .map_err(map_jwt_error)?;
 
-        Ok(Self(token.claims))
+        Ok(Self {
+            claim: token.claims,
+            header: token.header,
+        })
     }
 }
 
 fn map_jwt_error(e: jsonwebtoken::errors::Error) -> (StatusCode, Json<ApiErrorResponse>) {
     match e.kind() {
-
         // Malformed requests
         ErrorKind::Json(_)
         | ErrorKind::Base64(_)

@@ -3,12 +3,19 @@ use utoipa::ToSchema;
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct CreateUserRequest {
-    username: String,
-    password: String,
-    email: String,
+    pub username: String,
+    pub password: String,
+    pub email: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct CreateUserResponse {
-    success: bool,
+    pub(crate) success: bool,
+}
+
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct UserDetailsResponse {
+    username: String,
+    email: String,
+    created_at: chrono::DateTime<chrono::Utc>,
 }

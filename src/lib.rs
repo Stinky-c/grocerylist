@@ -8,6 +8,7 @@ pub mod config;
 pub mod models;
 pub mod routes;
 pub mod state;
+mod error;
 
 #[derive(Debug, Serialize, ToSchema)]
 pub struct ApiErrorResponse {

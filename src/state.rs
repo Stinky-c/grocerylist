@@ -1,4 +1,3 @@
-use axum::extract::{FromRef, State};
 use std::sync::Arc;
 
 pub type AxumApiState = Arc<ApiState>;
@@ -11,4 +10,6 @@ pub struct ApiState {
     pub jwt_decode: Arc<jsonwebtoken::DecodingKey>,
     pub jwt_encode: Arc<jsonwebtoken::EncodingKey>,
     pub jwt_validation: Arc<jsonwebtoken::Validation>,
+
+    pub password_hasher: Arc<argon2::Argon2<'static>>,
 }

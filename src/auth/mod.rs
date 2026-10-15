@@ -1,5 +1,5 @@
 mod extract;
 mod jwt;
 
-pub use extract::{Jwt, MaybeJwt};
-pub use jwt::Claims;
+pub use extract::Jwt;
+pub use jwt::Claim;

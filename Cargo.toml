@@ -2,6 +2,7 @@
 name = "grocerylist"
 version = "0.1.0"
 edition = "2024"
+publish = false
 
 default-run = "grocerylist"
 
@@ -30,14 +31,15 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 dotenvy = "0.15.7"
 
 utoipa-axum = "0.3"
-utoipa = { version = "6.0" }
+utoipa = { version = "6.0", features = ["chrono", "axum_extras", "uuid"] }
 axum = { version = "0.8.9", features = ["default", "macros", "json", "http2", "tracing"] }
-axum-extra = { version = "0.12.6", features = ["typed-header", ] }
+axum-extra = { version = "0.12.6", features = ["typed-header", "error-response"] }
 tower-http = { version = "0.7", features = ["timeout", "trace"] }
 
 
 # Swagger deps
 utoipa-swagger-ui = { version = "10", features = ["axum", "vendored"], optional = true }
+argon2 = "0.6.0"
 
 [features]
 swagger = ["dep:utoipa-swagger-ui"]
@@ -46,3 +48,7 @@ swagger = ["dep:utoipa-swagger-ui"]
 
 [profile.dev.package.sqlx-macros]
 opt-level = 3
+
+
+[lints.clippy]
+result_large_err = "allow"

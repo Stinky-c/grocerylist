@@ -37,6 +37,7 @@ pub async fn make_app() -> (Router, OpenApi) {
     MIGRATOR.run(&pool).await.unwrap();
 
     let (jwt_enc, jwt_dec) = config.jwt_pair();
+    let hasher = config.password_hasher();
 
     let state = ApiState {
         pool,
@@ -45,12 +46,13 @@ pub async fn make_app() -> (Router, OpenApi) {
         jwt_validation: Arc::new(jsonwebtoken::Validation::new(
             jsonwebtoken::Algorithm::HS256,
         )),
+        password_hasher: Arc::new(hasher),
     };
 
     // build our application with some routes
     let (router, api) = OpenApiRouter::new()
         .routes(utoipa_axum::routes!(
-            routes::auth::list_users,
+            routes::auth::get_user,
             routes::auth::create_user
         ))
         .with_state(Arc::new(state))
