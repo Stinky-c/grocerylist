@@ -7,10 +7,12 @@ use axum::http::StatusCode;
 use axum::http::request::Parts;
 use axum_extra::TypedHeader;
 use jsonwebtoken::errors::ErrorKind;
+use serde::Deserialize;
 
 type BearerAuthorization =
     axum_extra::headers::Authorization<axum_extra::headers::authorization::Bearer>;
 
+#[derive(Clone)]
 pub struct Jwt {
     pub claim: Claim,
     pub header: jsonwebtoken::Header,
@@ -32,12 +34,16 @@ impl FromRequestParts<AxumApiState> for Jwt {
                 )
             })?;
 
-        let token = jsonwebtoken::decode::<Claim>(
-            header.token(),
-            &state.jwt_decode,
-            &state.jwt_validation,
-        )
-        .map_err(map_jwt_error)?;
+        let token =
+            jsonwebtoken::decode::<Claim>(header.token(), &state.jwt_decode, &state.jwt_validation)
+                .map_err(map_jwt_error)?;
+
+        if !token.claims.valid() {
+            return Err((
+                StatusCode::UNAUTHORIZED,
+                ApiErrorResponse::from("expired token").json(),
+            ));
+        }
 
         Ok(Self {
             claim: token.claims,

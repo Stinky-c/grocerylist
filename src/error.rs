@@ -1,11 +1,14 @@
 use crate::ApiErrorResponse;
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
+use std::error::Error;
+use tracing::error;
 
 pub enum AuthError {
     InvalidCredentials,
     Forbidden,
     Unauthorized,
+    InternalServerError,
 }
 
 impl IntoResponse for AuthError {
@@ -24,6 +27,11 @@ impl IntoResponse for AuthError {
             AuthError::Unauthorized => (
                 StatusCode::UNAUTHORIZED,
                 ApiErrorResponse::from("not authorized").json(),
+            )
+                .into_response(),
+            AuthError::InternalServerError => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                ApiErrorResponse::from("An error occurred while processing your request.").json(),
             )
                 .into_response(),
         }

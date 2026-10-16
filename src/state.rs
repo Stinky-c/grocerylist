@@ -3,7 +3,7 @@ use std::sync::Arc;
 pub type AxumApiState = Arc<ApiState>;
 
 // Make sure everything inside is cheap to clone
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct ApiState {
     pub pool: sqlx::postgres::PgPool,
 
