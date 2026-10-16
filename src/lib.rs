@@ -5,10 +5,10 @@ use utoipa::ToSchema;
 pub mod app;
 pub mod auth;
 pub mod config;
+mod error;
 pub mod models;
 pub mod routes;
 pub mod state;
-mod error;
 
 #[derive(Debug, Serialize, ToSchema)]
 pub struct ApiErrorResponse {
@@ -16,6 +16,11 @@ pub struct ApiErrorResponse {
 }
 
 impl ApiErrorResponse {
+    pub fn INTERNAL_SERVER_ERROR() -> Self {
+        ApiErrorResponse {
+            message: "internal server error".to_string(),
+        }
+    }
     pub fn new(message: String) -> Self {
         ApiErrorResponse { message }
     }

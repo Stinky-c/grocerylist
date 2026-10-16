@@ -1,5 +1,6 @@
 use crate::ApiErrorResponse;
 use crate::auth::jwt::Claim;
+use crate::error::ApiError;
 use crate::state::AxumApiState;
 use axum::Json;
 use axum::extract::FromRequestParts;
@@ -19,7 +20,7 @@ pub struct Jwt {
 }
 
 impl FromRequestParts<AxumApiState> for Jwt {
-    type Rejection = (StatusCode, Json<ApiErrorResponse>);
+    type Rejection = ApiError;
 
     async fn from_request_parts(
         parts: &mut Parts,
@@ -28,9 +29,9 @@ impl FromRequestParts<AxumApiState> for Jwt {
         let header = TypedHeader::<BearerAuthorization>::from_request_parts(parts, &())
             .await
             .map_err(|_| {
-                (
+                ApiError::Custom(
                     StatusCode::BAD_REQUEST,
-                    ApiErrorResponse::from("Missing header").json(),
+                    ApiErrorResponse::from("Invalid auth header"),
                 )
             })?;
 
@@ -39,10 +40,7 @@ impl FromRequestParts<AxumApiState> for Jwt {
                 .map_err(map_jwt_error)?;
 
         if !token.claims.valid() {
-            return Err((
-                StatusCode::UNAUTHORIZED,
-                ApiErrorResponse::from("expired token").json(),
-            ));
+            return Err(ApiError::SessionExpired);
         }
 
         Ok(Self {
@@ -52,16 +50,13 @@ impl FromRequestParts<AxumApiState> for Jwt {
     }
 }
 
-fn map_jwt_error(e: jsonwebtoken::errors::Error) -> (StatusCode, Json<ApiErrorResponse>) {
+fn map_jwt_error(e: jsonwebtoken::errors::Error) -> ApiError {
     match e.kind() {
         // Malformed requests
         ErrorKind::Json(_)
         | ErrorKind::Base64(_)
         | ErrorKind::InvalidToken
-        | ErrorKind::Utf8(_) => (
-            StatusCode::BAD_REQUEST,
-            ApiErrorResponse::from("bad request").json(),
-        ),
+        | ErrorKind::Utf8(_) => ApiError::BadRequest,
 
         // Bad user
         ErrorKind::ExpiredSignature
@@ -69,10 +64,7 @@ fn map_jwt_error(e: jsonwebtoken::errors::Error) -> (StatusCode, Json<ApiErrorRe
         | ErrorKind::InvalidAudience
         | ErrorKind::InvalidSubject
         | ErrorKind::ImmatureSignature
-        | ErrorKind::InvalidSignature => (
-            StatusCode::UNAUTHORIZED,
-            ApiErrorResponse::from("unauthorized").json(),
-        ),
+        | ErrorKind::InvalidSignature => ApiError::Unauthorized,
 
         // Server errors
         ErrorKind::InvalidEcdsaKey
@@ -88,9 +80,6 @@ fn map_jwt_error(e: jsonwebtoken::errors::Error) -> (StatusCode, Json<ApiErrorRe
         | ErrorKind::MissingAlgorithm
         | ErrorKind::Provider(_)
         | ErrorKind::Signing(_)
-        | _ => (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            ApiErrorResponse::from("Idk").json(),
-        ),
+        | _ => ApiError::InternalServerError,
     }
 }

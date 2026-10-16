@@ -1,16 +1,18 @@
 use crate::ApiErrorResponse;
 use crate::auth::{Claim, Jwt};
-use crate::error::AuthError;
+use crate::error::ApiError;
 use crate::models::db::users::User;
 use crate::models::http::users::{
-    CreateUserRequest, CreateUserResponse, UserDetailsResponse, UserLoginRequest,
+    CreateUserRequest, CreateUserResponse, UserDetailsResponse, UserLoginRequest, UserLoginResponse,
 };
 use crate::state::AxumApiState;
 use argon2::PasswordHasher;
 use axum::Json;
 use axum::extract::State;
-use axum::response::{IntoResponse, Result};
-use tracing::{debug, info};
+use jsonwebtoken::Header;
+use tracing::info;
+
+type Result<T> = std::result::Result<Json<T>, ApiError>;
 
 #[utoipa::path(get, path = "/auth/user", responses(
     (status = 200, description = "Get details about yourself", body = UserDetailsResponse),
@@ -18,11 +20,8 @@ use tracing::{debug, info};
     (status = 418, description = "Bad request", body = ApiErrorResponse)
 ))]
 #[axum::debug_handler]
-pub async fn get_user(
-    _: Jwt,
-    State(state): State<AxumApiState>,
-) -> Result<Json<UserDetailsResponse>> {
-    Err(AuthError::Unauthorized.into())
+pub async fn get_user(_: Jwt, State(state): State<AxumApiState>) -> Result<UserDetailsResponse> {
+    Err(ApiError::Unauthorized)
 }
 
 #[utoipa::path(post, path = "/auth/user", responses(
@@ -33,11 +32,11 @@ pub async fn get_user(
 pub async fn create_user(
     State(state): State<AxumApiState>,
     Json(req): Json<CreateUserRequest>,
-) -> Result<Json<CreateUserResponse>> {
+) -> Result<CreateUserResponse> {
     let pass_hash = state
         .password_hasher
         .hash_password(req.password.as_ref())
-        .map_err(|_| AuthError::InternalServerError)?
+        .map_err(ApiError::Argon2HashError)?
         .to_string();
 
     let res = sqlx::query("INSERT INTO users(username, email, password_hash) VALUES ($1, $2, $3) ")
@@ -46,7 +45,8 @@ pub async fn create_user(
         .bind(pass_hash)
         .execute(&state.pool)
         .await
-        .map_err(|_| AuthError::InternalServerError)?;
+        .map_err(ApiError::SqlxError)?;
+
     info!("{:?}", res.rows_affected());
 
     let res = CreateUserResponse { success: true };
@@ -58,29 +58,33 @@ pub async fn create_user(
 pub async fn login_user(
     State(state): State<AxumApiState>,
     Json(req): Json<UserLoginRequest>,
-) -> Result<Json<UserDetailsResponse>> {
+) -> Result<UserLoginResponse> {
     let user: Option<User> = User::by_email(req.email, &state.pool)
         .await
-        .map_err(|_| AuthError::InternalServerError)?;
+        .map_err(|_| ApiError::InternalServerError)?;
 
     let user = match user {
-        None => return Err(AuthError::InvalidCredentials.into()),
+        None => return Err(ApiError::Unauthorized),
         Some(u) => u,
     };
 
-    // Claim::new(user)
+    let claim = Claim::new(user.id);
+    let token = jsonwebtoken::encode(&Header::default(), &claim, &state.jwt_encode)
+        .map_err(|_| ApiError::InternalServerError)?;
 
-    Err(AuthError::Unauthorized.into())
+    let res = UserLoginResponse { token };
+
+    Ok(Json(res))
 }
 
 #[utoipa::path(post, path = "/auth/user/logout")]
 #[axum::debug_handler]
-pub async fn logout_user() -> Result<Json<UserDetailsResponse>> {
+pub async fn logout_user() -> Result<UserDetailsResponse> {
     // Invalidate provided session here
-    Err(AuthError::Unauthorized.into())
+    Err(ApiError::Unauthorized.into())
 }
 
 #[utoipa::path(delete, path = "/auth/user/logout")]
-pub async fn invalidate_sessions() -> Result<Json<UserDetailsResponse>> {
-    Err(AuthError::Unauthorized.into())
+pub async fn invalidate_sessions() -> Result<UserDetailsResponse> {
+    Err(ApiError::Unauthorized.into())
 }

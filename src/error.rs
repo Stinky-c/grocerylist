@@ -1,39 +1,62 @@
 use crate::ApiErrorResponse;
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
-use std::error::Error;
-use tracing::error;
+use utoipa::ToSchema;
 
-pub enum AuthError {
-    InvalidCredentials,
+#[derive(Debug)]
+pub enum ApiError {
+    Custom(StatusCode, ApiErrorResponse),
+    // generic errors
+    InternalServerError,
     Forbidden,
     Unauthorized,
-    InternalServerError,
+    SessionExpired,
+    BadRequest,
+
+    /// Crate errors
+    SqlxError(sqlx::Error),
+    Argon2HashError(argon2::password_hash::Error),
 }
 
-impl IntoResponse for AuthError {
-    fn into_response(self) -> Response {
+impl ApiError {
+    fn into_pair(self) -> (StatusCode, ApiErrorResponse) {
         match self {
-            AuthError::Forbidden => (
-                StatusCode::FORBIDDEN,
-                ApiErrorResponse::from("forbidden").json(),
-            )
-                .into_response(),
-            AuthError::InvalidCredentials => (
-                StatusCode::FORBIDDEN,
-                ApiErrorResponse::from("invalid credentials").json(),
-            )
-                .into_response(),
-            AuthError::Unauthorized => (
-                StatusCode::UNAUTHORIZED,
-                ApiErrorResponse::from("not authorized").json(),
-            )
-                .into_response(),
-            AuthError::InternalServerError => (
+            ApiError::Custom(code, body) => (code, body),
+            ApiError::SqlxError(e) => (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                ApiErrorResponse::from("An error occurred while processing your request.").json(),
-            )
-                .into_response(),
+                ApiErrorResponse::INTERNAL_SERVER_ERROR(),
+            ),
+            ApiError::Argon2HashError(e) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                ApiErrorResponse::INTERNAL_SERVER_ERROR(),
+            ),
+            ApiError::InternalServerError => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                ApiErrorResponse::INTERNAL_SERVER_ERROR(),
+            ),
+            ApiError::Unauthorized => (
+                StatusCode::UNAUTHORIZED,
+                ApiErrorResponse::from("unauthorized"),
+            ),
+            ApiError::Forbidden => (
+                StatusCode::FORBIDDEN,
+                ApiErrorResponse::from("access is forbidden"),
+            ),
+            ApiError::SessionExpired => (
+                StatusCode::UNAUTHORIZED,
+                ApiErrorResponse::from("session expired"),
+            ),
+            ApiError::BadRequest => (
+                StatusCode::BAD_REQUEST,
+                ApiErrorResponse::from("bad request"),
+            ),
         }
+    }
+}
+
+impl IntoResponse for ApiError {
+    fn into_response(self) -> Response {
+        let (l, r) = self.into_pair();
+        (l, r.json()).into_response()
     }
 }

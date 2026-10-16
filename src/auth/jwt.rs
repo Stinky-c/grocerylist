@@ -1,12 +1,13 @@
-use crate::error::AuthError;
+use crate::error::ApiError;
 use crate::models::db::users::User;
 use axum::http::Response;
 use axum::response::{ErrorResponse, IntoResponse};
 use chrono::Duration;
+use serde::{Deserialize, Serialize};
 use sqlx::{Error, PgPool};
 use uuid::Uuid;
 
-#[derive(serde::Deserialize, Clone)]
+#[derive(Deserialize, Serialize, Clone)]
 pub struct Claim {
     user_id: Uuid,
     // https://www.rfc-editor.org/info/rfc7519/#section-4.1
@@ -30,6 +31,7 @@ impl Claim {
         }
     }
 
+    // TODO: redundant?
     pub(super) fn valid(&self) -> bool {
         let now = jsonwebtoken::get_current_timestamp();
         now > self.exp && self.iss == env!("CARGO_CRATE_NAME")
@@ -38,7 +40,7 @@ impl Claim {
     pub async fn get_user(&self, pool: &PgPool) -> Result<User, ErrorResponse> {
         let v = User::by_id(self.user_id, pool)
             .await
-            .map_err(|_| AuthError::InternalServerError)?;
+            .map_err(|_| ApiError::InternalServerError)?;
 
         v.ok_or_else(|| panic!("TODO:  Handle missing user from database"))
     }
