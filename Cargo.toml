@@ -22,7 +22,7 @@ tokio = { version = "1.0", features = ["full"] }
 tracing = "0.1"
 chrono = { version = "0.4", features = ["serde", "now"] }
 
-jsonwebtoken = { version = "11.1.0" }
+jsonwebtoken = { version = "11.1.0", features = ["rust_crypto"] }
 
 figment = { version = "0.10", features = ["env", "toml"] }
 figment_file_provider_adapter = { version = "0.1" }

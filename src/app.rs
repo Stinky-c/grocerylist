@@ -1,3 +1,4 @@
+use crate::auth::MemorySessionCache;
 use crate::config::AppConfig;
 use crate::routes;
 use crate::state::ApiState;
@@ -28,25 +29,21 @@ pub async fn make_app() -> (Router, OpenApi) {
 
     let config = AppConfig::load();
 
-    let pool = sqlx::postgres::PgPoolOptions::new()
-        .max_connections(config.database_max_connections)
-        .connect(&config.database_url)
-        .await
-        .unwrap();
+    let pool = config.database().await;
 
     MIGRATOR.run(&pool).await.unwrap();
 
     let (jwt_enc, jwt_dec) = config.jwt_pair();
     let hasher = config.password_hasher();
+    let validation = config.validation();
 
     let state = ApiState {
         pool,
         jwt_decode: Arc::new(jwt_dec),
         jwt_encode: Arc::new(jwt_enc),
-        jwt_validation: Arc::new(jsonwebtoken::Validation::new(
-            jsonwebtoken::Algorithm::HS256,
-        )),
+        jwt_validation: Arc::new(validation),
         password_hasher: Arc::new(hasher),
+        session_cache: MemorySessionCache::new(),
     };
 
     // build our application with some routes
@@ -54,6 +51,10 @@ pub async fn make_app() -> (Router, OpenApi) {
         .routes(utoipa_axum::routes!(
             routes::auth::get_user,
             routes::auth::create_user
+        ))
+        .routes(utoipa_axum::routes!(
+            routes::auth::login_user,
+            routes::auth::logout_user
         ))
         .with_state(Arc::new(state))
         .split_for_parts();

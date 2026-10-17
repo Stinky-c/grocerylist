@@ -15,9 +15,9 @@ pub struct CreateUserResponse {
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct UserDetailsResponse {
-    username: String,
-    email: String,
-    created_at: chrono::DateTime<chrono::Utc>,
+    pub(crate) username: String,
+    pub(crate) email: String,
+    pub(crate) created_at: chrono::DateTime<chrono::Utc>,
 }
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
@@ -30,3 +30,6 @@ pub struct UserLoginRequest {
 pub struct UserLoginResponse {
     pub token: String,
 }
+
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct SessionInvalidationResponse;

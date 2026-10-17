@@ -1,3 +1,4 @@
+use crate::auth::MemorySessionCache;
 use std::sync::Arc;
 
 pub type AxumApiState = Arc<ApiState>;
@@ -12,4 +13,6 @@ pub struct ApiState {
     pub jwt_validation: Arc<jsonwebtoken::Validation>,
 
     pub password_hasher: Arc<argon2::Argon2<'static>>,
+
+    pub session_cache: MemorySessionCache,
 }

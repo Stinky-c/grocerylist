@@ -1,11 +1,14 @@
 use crate::ApiErrorResponse;
+use axum::Json;
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
-use utoipa::ToSchema;
+use std::convert::Infallible;
 
 #[derive(Debug)]
 pub enum ApiError {
     Custom(StatusCode, ApiErrorResponse),
+    /// Huh???
+    Infallible,
     // generic errors
     InternalServerError,
     Forbidden,
@@ -21,6 +24,7 @@ pub enum ApiError {
 impl ApiError {
     fn into_pair(self) -> (StatusCode, ApiErrorResponse) {
         match self {
+            ApiError::Infallible => panic!("Infallible error"), // FIXME: maybe not right
             ApiError::Custom(code, body) => (code, body),
             ApiError::SqlxError(e) => (
                 StatusCode::INTERNAL_SERVER_ERROR,
@@ -60,3 +64,17 @@ impl IntoResponse for ApiError {
         (l, r.json()).into_response()
     }
 }
+
+impl From<sqlx::Error> for ApiError {
+    fn from(value: sqlx::Error) -> Self {
+        Self::SqlxError(value)
+    }
+}
+
+impl From<Infallible> for ApiError {
+    fn from(value: Infallible) -> Self {
+        Self::Infallible
+    }
+}
+
+pub type Result<T> = std::result::Result<Json<T>, ApiError>;

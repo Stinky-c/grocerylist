@@ -1,19 +1,18 @@
 use crate::ApiErrorResponse;
-use crate::auth::jwt::Claim;
+use crate::auth::Claim;
 use crate::error::ApiError;
 use crate::state::AxumApiState;
-use axum::Json;
 use axum::extract::FromRequestParts;
 use axum::http::StatusCode;
 use axum::http::request::Parts;
 use axum_extra::TypedHeader;
 use jsonwebtoken::errors::ErrorKind;
-use serde::Deserialize;
+use tracing::debug;
 
 type BearerAuthorization =
     axum_extra::headers::Authorization<axum_extra::headers::authorization::Bearer>;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Jwt {
     pub claim: Claim,
     pub header: jsonwebtoken::Header,
@@ -35,13 +34,12 @@ impl FromRequestParts<AxumApiState> for Jwt {
                 )
             })?;
 
+        // decode performs validation
         let token =
             jsonwebtoken::decode::<Claim>(header.token(), &state.jwt_decode, &state.jwt_validation)
                 .map_err(map_jwt_error)?;
 
-        if !token.claims.valid() {
-            return Err(ApiError::SessionExpired);
-        }
+        debug!("Decoded: {:?}", token);
 
         Ok(Self {
             claim: token.claims,
