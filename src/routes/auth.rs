@@ -17,7 +17,10 @@ use tracing::info;
     (status = 200, description = "Get details about yourself", body = UserDetailsResponse),
     (status = 401, description = "Missing auth", body = ApiErrorResponse),
 ))]
-pub async fn get_user(jwt: Jwt, State(state): State<AxumApiState>) -> error::Result<UserDetailsResponse> {
+pub async fn get_user(
+    jwt: Jwt,
+    State(state): State<AxumApiState>,
+) -> error::Result<UserDetailsResponse> {
     info!("{:?}", jwt);
     let user = jwt.claim.get_user(&state.pool).await?;
     let res = UserDetailsResponse {
@@ -30,7 +33,7 @@ pub async fn get_user(jwt: Jwt, State(state): State<AxumApiState>) -> error::Res
 
 #[utoipa::path(post, path = "/auth/user/create", responses(
     (status = 200, description = "User created. Proceed to login", body = CreateUserResponse),
-    (status = 401, description = "Bad auth", body = ApiErrorResponse), // vague to prevent fuzzing
+    ApiError
 ))]
 #[axum::debug_handler]
 pub async fn create_user(
@@ -41,7 +44,7 @@ pub async fn create_user(
     let pass_hash = state
         .password_hasher
         .hash_password(req.password.as_ref())
-        .map_err(ApiError::Argon2HashError)?
+        .map_err(|_| ApiError::Argon2HashError)?
         .to_string();
 
     let res = sqlx::query("INSERT INTO users(username, email, password_hash) VALUES ($1, $2, $3) ")
@@ -50,7 +53,7 @@ pub async fn create_user(
         .bind(pass_hash)
         .execute(&state.pool)
         .await
-        .map_err(ApiError::SqlxError)?;
+        .map_err(|_| ApiError::SqlxError)?;
 
     info!("{:?}", res.rows_affected());
 

@@ -1,5 +1,6 @@
 use crate::auth::MemorySessionCache;
 use crate::config::AppConfig;
+use crate::openapi::ApiDoc;
 use crate::routes;
 use crate::state::ApiState;
 use axum::Router;
@@ -11,6 +12,7 @@ use tower_http::timeout::TimeoutLayer;
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
+use utoipa::OpenApi as _;
 use utoipa::openapi::OpenApi;
 use utoipa_axum::router::OpenApiRouter;
 
@@ -47,7 +49,7 @@ pub async fn make_app() -> (Router, OpenApi) {
     };
 
     // build our application with some routes
-    let (router, api) = OpenApiRouter::new()
+    let (router, api) = OpenApiRouter::with_openapi(ApiDoc::openapi())
         .routes(utoipa_axum::routes!(
             routes::auth::get_user,
             routes::auth::create_user

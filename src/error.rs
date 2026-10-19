@@ -2,35 +2,38 @@ use crate::ApiErrorResponse;
 use axum::Json;
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
-use std::convert::Infallible;
+use utoipa::IntoResponses;
 
-#[derive(Debug)]
+#[derive(Debug, IntoResponses)]
+#[response(content_type = "application/json")]
 pub enum ApiError {
-    Custom(StatusCode, ApiErrorResponse),
-    /// Huh???
-    Infallible,
     // generic errors
+    #[response(status = 500, description = "Internal Server Error")]
     InternalServerError,
+    #[response(status = 403, description = "Forbidden")]
     Forbidden,
+    #[response(status = 401, description = "Unauthorized")]
     Unauthorized,
+    #[response(status = 401, description = "Authorization Expired")]
     SessionExpired,
+    #[response(status = 400, description = "Malformed request")]
     BadRequest,
 
     /// Crate errors
-    SqlxError(sqlx::Error),
-    Argon2HashError(argon2::password_hash::Error),
+    #[response(status = 500, description = "Internal Server Error")]
+    SqlxError,
+    #[response(status = 500, description = "Internal Server Error")]
+    Argon2HashError,
 }
 
 impl ApiError {
     fn into_pair(self) -> (StatusCode, ApiErrorResponse) {
         match self {
-            ApiError::Infallible => panic!("Infallible error"), // FIXME: maybe not right
-            ApiError::Custom(code, body) => (code, body),
-            ApiError::SqlxError(e) => (
+            ApiError::SqlxError => (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 ApiErrorResponse::INTERNAL_SERVER_ERROR(),
             ),
-            ApiError::Argon2HashError(e) => (
+            ApiError::Argon2HashError => (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 ApiErrorResponse::INTERNAL_SERVER_ERROR(),
             ),
@@ -66,15 +69,9 @@ impl IntoResponse for ApiError {
 }
 
 impl From<sqlx::Error> for ApiError {
-    fn from(value: sqlx::Error) -> Self {
-        Self::SqlxError(value)
+    fn from(_: sqlx::Error) -> Self {
+        Self::SqlxError
     }
 }
 
-impl From<Infallible> for ApiError {
-    fn from(value: Infallible) -> Self {
-        Self::Infallible
-    }
-}
-
-pub type Result<T> = std::result::Result<Json<T>, ApiError>;
+pub type Result<T> = std::result::Result<Json<T>, impl IntoResponse>;

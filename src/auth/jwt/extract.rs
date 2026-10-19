@@ -27,12 +27,7 @@ impl FromRequestParts<AxumApiState> for Jwt {
     ) -> Result<Self, Self::Rejection> {
         let header = TypedHeader::<BearerAuthorization>::from_request_parts(parts, &())
             .await
-            .map_err(|_| {
-                ApiError::Custom(
-                    StatusCode::BAD_REQUEST,
-                    ApiErrorResponse::from("Invalid auth header"),
-                )
-            })?;
+            .map_err(|_| ApiError::BadRequest)?;
 
         // decode performs validation
         let token =
