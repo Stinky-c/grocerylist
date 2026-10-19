@@ -1,5 +1,3 @@
-use crate::error::ApiError;
-
 pub(super) mod cache;
 pub(super) mod session;
 pub(super) mod store;

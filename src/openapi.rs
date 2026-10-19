@@ -1,6 +1,5 @@
-use utoipa::openapi::security::{
-    ApiKey, ApiKeyValue, Http, HttpAuthScheme, HttpBuilder, SecurityScheme,
-};
+use crate::routes::auth::AUTH_TAG;
+use utoipa::openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme};
 use utoipa::{Modify, OpenApi};
 
 struct SecurityAddon;
@@ -26,7 +25,7 @@ impl Modify for SecurityAddon {
 #[openapi(
     modifiers(&SecurityAddon),
     tags(
-            (name = "grocerylist", description = "Todo items management API")
+            (name = AUTH_TAG, description = "Session management")
     )
 )]
 pub struct ApiDoc;

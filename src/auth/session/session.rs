@@ -1,5 +1,5 @@
 use crate::auth::{Jwt, KVStore};
-use crate::error::ApiError;
+use crate::error::AppError;
 use crate::state::AxumApiState;
 use axum::extract::FromRequestParts;
 use axum::http::request::Parts;
@@ -15,7 +15,7 @@ pub struct Session {
 }
 
 impl FromRequestParts<AxumApiState> for Session {
-    type Rejection = ApiError;
+    type Rejection = AppError;
 
     async fn from_request_parts(
         parts: &mut Parts,
@@ -28,7 +28,7 @@ impl FromRequestParts<AxumApiState> for Session {
             .session_cache
             .get(&jti)
             .await
-            .map_err(|_| ApiError::InternalServerError)?
-            .ok_or_else(|| ApiError::Unauthorized)
+            .map_err(|e| AppError::Internal(e.into()))?
+            .ok_or_else(|| AppError::Authorization)
     }
 }

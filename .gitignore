@@ -1,3 +1,5 @@
 /target
 .env
 /pgdata
+
+openapi.json

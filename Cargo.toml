@@ -3,6 +3,8 @@ name = "grocerylist"
 version = "0.1.0"
 edition = "2024"
 publish = false
+authors = ["Buckydev"]
+license = "GPL-3"
 
 default-run = "grocerylist"
 
@@ -42,6 +44,8 @@ moka = { version = "0.12", features = ["future"] }
 utoipa-swagger-ui = { version = "10", features = ["axum", "vendored"], optional = true }
 argon2 = "0.6.0"
 uuid = { version = "1.28.0", features = ["serde", "v4"] }
+thiserror = "2.0.21"
+anyhow = "1.0.104"
 
 [features]
 swagger = ["dep:utoipa-swagger-ui"]

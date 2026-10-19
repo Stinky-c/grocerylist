@@ -1,9 +1,7 @@
-use crate::ApiErrorResponse;
 use crate::auth::Claim;
-use crate::error::ApiError;
+use crate::error::AppError;
 use crate::state::AxumApiState;
 use axum::extract::FromRequestParts;
-use axum::http::StatusCode;
 use axum::http::request::Parts;
 use axum_extra::TypedHeader;
 use jsonwebtoken::errors::ErrorKind;
@@ -19,7 +17,7 @@ pub struct Jwt {
 }
 
 impl FromRequestParts<AxumApiState> for Jwt {
-    type Rejection = ApiError;
+    type Rejection = AppError;
 
     async fn from_request_parts(
         parts: &mut Parts,
@@ -27,7 +25,7 @@ impl FromRequestParts<AxumApiState> for Jwt {
     ) -> Result<Self, Self::Rejection> {
         let header = TypedHeader::<BearerAuthorization>::from_request_parts(parts, &())
             .await
-            .map_err(|_| ApiError::BadRequest)?;
+            .map_err(|_| AppError::MissingAuthHeader)?;
 
         // decode performs validation
         let token =
@@ -43,21 +41,23 @@ impl FromRequestParts<AxumApiState> for Jwt {
     }
 }
 
-fn map_jwt_error(e: jsonwebtoken::errors::Error) -> ApiError {
+fn map_jwt_error(e: jsonwebtoken::errors::Error) -> AppError {
     match e.kind() {
         // Malformed requests
         ErrorKind::Json(_)
         | ErrorKind::Base64(_)
         | ErrorKind::InvalidToken
-        | ErrorKind::Utf8(_) => ApiError::BadRequest,
+        | ErrorKind::Utf8(_) => AppError::Validation("Malformed JWT interior".into()),
 
         // Bad user
-        ErrorKind::ExpiredSignature
-        | ErrorKind::InvalidIssuer
+        ErrorKind::ExpiredSignature => AppError::ExpiredToken,
+
+        // where did the token come from?
+        ErrorKind::InvalidIssuer
         | ErrorKind::InvalidAudience
         | ErrorKind::InvalidSubject
         | ErrorKind::ImmatureSignature
-        | ErrorKind::InvalidSignature => ApiError::Unauthorized,
+        | ErrorKind::InvalidSignature => AppError::Validation("Invalid JWT features".into()),
 
         // Server errors
         ErrorKind::InvalidEcdsaKey
@@ -73,6 +73,6 @@ fn map_jwt_error(e: jsonwebtoken::errors::Error) -> ApiError {
         | ErrorKind::MissingAlgorithm
         | ErrorKind::Provider(_)
         | ErrorKind::Signing(_)
-        | _ => ApiError::InternalServerError,
+        | _ => AppError::Internal(e.into()),
     }
 }

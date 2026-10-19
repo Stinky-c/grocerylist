@@ -1,7 +1,5 @@
-use crate::auth::Claim;
 use crate::auth::session::KVStore;
 use crate::auth::session::session::Session;
-use crate::error::ApiError;
 use std::convert::Infallible;
 use uuid::Uuid;
 
