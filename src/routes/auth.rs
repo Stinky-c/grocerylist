@@ -43,7 +43,7 @@ pub async fn create_user(
     let pass_hash = state
         .password_hasher
         .hash_password(req.password.as_ref())
-        .map_err(|e| AppError::Internal(e.into()))?
+        .map_err(AppError::from)?
         .to_string();
 
     let res = sqlx::query("INSERT INTO users(username, email, password_hash) VALUES ($1, $2, $3) ")
@@ -78,7 +78,7 @@ pub async fn login_user(
         Some(u) => u,
     };
 
-    let hash = PasswordHash::new(&user.password_hash).map_err(|e| AppError::Internal(e.into()))?;
+    let hash = PasswordHash::new(&user.password_hash).map_err(AppError::from)?;
     let valid = state
         .password_hasher
         .verify_password(req.password.as_ref(), &hash);

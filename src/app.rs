@@ -12,6 +12,7 @@ use tower_http::timeout::TimeoutLayer;
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
+use tracing_subscriber::{EnvFilter, fmt};
 use utoipa::OpenApi as _;
 use utoipa::openapi::OpenApi;
 use utoipa_axum::router::OpenApiRouter;
@@ -21,12 +22,13 @@ static MIGRATOR: Migrator = sqlx::migrate!();
 #[tracing::instrument]
 pub async fn make_app() -> (Router, OpenApi) {
     dotenvy::dotenv().expect("Failed to read .env file");
+
     tracing_subscriber::registry()
+        .with(fmt::layer().with_line_number(true))
         .with(
-            tracing_subscriber::EnvFilter::try_from_default_env()
+            EnvFilter::try_from_default_env()
                 .unwrap_or_else(|_| format!("{}=debug", env!("CARGO_CRATE_NAME")).into()),
         )
-        .with(tracing_subscriber::fmt::layer())
         .init();
 
     let config = AppConfig::load();

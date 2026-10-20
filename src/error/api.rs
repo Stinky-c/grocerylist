@@ -103,3 +103,15 @@ impl From<sqlx::Error> for AppError {
         Self::Database(err)
     }
 }
+
+impl From<argon2::password_hash::Error> for AppError {
+    fn from(err: argon2::password_hash::Error) -> Self {
+        Self::Internal(err.into())
+    }
+}
+
+impl From<argon2::password_hash::phc::Error> for AppError {
+    fn from(err: argon2::password_hash::phc::Error) -> Self {
+        Self::Internal(err.into())
+    }
+}
