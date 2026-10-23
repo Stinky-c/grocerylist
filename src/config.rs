@@ -2,13 +2,17 @@ use argon2::{Algorithm, Argon2, Params, Version};
 use figment::Figment;
 use figment::providers::{Env, Format, Toml};
 use figment_file_provider_adapter::FileAdapter;
+use fred::prelude::{Builder, ClientLike, Config, HeartbeatInterface};
 use jsonwebtoken::{DecodingKey, EncodingKey, Validation};
 use serde::Deserialize;
 use sqlx::PgPool;
+use std::time::Duration;
 
 #[derive(Deserialize, Debug)]
 pub struct AppConfig {
     pub database_url: String,
+
+    pub valkey_url: String,
 
     #[serde(default = "config_database_max_connections")]
     pub database_max_connections: u32,
@@ -19,7 +23,7 @@ pub struct AppConfig {
 impl AppConfig {
     pub fn load() -> AppConfig {
         Figment::new()
-            .merge(Env::raw().only(&["DATABASE_URL"]))
+            .merge(Env::raw().only(&["DATABASE_URL", "VALKEY_URL"]))
             .merge(FileAdapter::wrap(Env::prefixed("APP_")))
             .merge(FileAdapter::wrap(Toml::file("config.toml")))
             .extract()
@@ -32,6 +36,15 @@ impl AppConfig {
             .connect(&self.database_url)
             .await
             .expect("Failed to connect to database")
+    }
+
+    pub async fn kv(&self) -> fred::prelude::Client {
+        let config = Config::from_url(&self.valkey_url).expect("Failed to parse to valkey url");
+        let builder = Builder::from_config(config);
+
+        let client = builder.build().unwrap();
+        client.init().await.expect("Failed to init client");
+        client
     }
 
     pub fn jwt_pair(&self) -> (EncodingKey, DecodingKey) {

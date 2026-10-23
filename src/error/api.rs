@@ -2,6 +2,7 @@ use crate::error::body::ErrorBody;
 use axum::Json;
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
+use serde_json::Error;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -18,6 +19,9 @@ pub enum AppError {
     #[error("database error")]
     Database(#[source] sqlx::Error),
 
+    #[error("valkey error")]
+    Fred(#[source] fred::error::Error),
+
     #[error("unexpected internal error")]
     Internal(#[source] anyhow::Error),
 
@@ -33,7 +37,9 @@ impl AppError {
         match self {
             AppError::Validation(_) | AppError::MissingAuthHeader => StatusCode::BAD_REQUEST,
             AppError::NotFound(_) => StatusCode::NOT_FOUND,
-            AppError::Database(_) | Self::Internal(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            AppError::Database(_) | Self::Internal(_) | AppError::Fred(_) => {
+                StatusCode::INTERNAL_SERVER_ERROR
+            }
             AppError::ExpiredToken | AppError::Authorization => StatusCode::UNAUTHORIZED,
         }
     }
@@ -69,7 +75,7 @@ impl AppError {
             },
 
             // Do not expose database or internal error details.
-            Self::Database(_) | Self::Internal(_) => ErrorBody {
+            Self::Database(_) | Self::Internal(_) | Self::Fred(_) => ErrorBody {
                 code: "internal_error".into(),
                 message: "An internal error occurred".into(),
                 request_id: None,
@@ -85,7 +91,7 @@ impl IntoResponse for AppError {
         let status = self.status_code();
 
         match &self {
-            Self::Database(_) | Self::Internal(_) => {
+            Self::Database(_) | Self::Internal(_) | Self::Fred(_) => {
                 error!(error = ?self, "request failed");
             }
 
@@ -113,5 +119,17 @@ impl From<argon2::password_hash::Error> for AppError {
 impl From<argon2::password_hash::phc::Error> for AppError {
     fn from(err: argon2::password_hash::phc::Error) -> Self {
         Self::Internal(err.into())
+    }
+}
+
+impl From<serde_json::error::Error> for AppError {
+    fn from(value: Error) -> Self {
+        Self::Internal(value.into())
+    }
+}
+
+impl From<fred::error::Error> for AppError {
+    fn from(value: fred::error::Error) -> Self {
+        AppError::Fred(value)
     }
 }

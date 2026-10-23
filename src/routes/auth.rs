@@ -1,13 +1,14 @@
-use crate::auth::{Claim, Jwt, KVStore, Session};
+use crate::auth::{Claim, Jwt, Session, format_jti};
 use crate::models::db::users::User;
 use crate::models::http::users::{
     CreateUserRequest, CreateUserResponse, SessionInvalidationResponse, UserDetailsResponse,
     UserLoginRequest, UserLoginResponse,
 };
-use crate::state::AxumApiState;
+use crate::state::ApiState;
 use argon2::{PasswordHash, PasswordHasher, PasswordVerifier};
 use axum::Json;
 use axum::extract::State;
+use fred::prelude::*;
 use jsonwebtoken::Header;
 use tracing::info;
 
@@ -19,7 +20,7 @@ use crate::error::{AppError, Result, StandardErrorResponses};
     StandardErrorResponses
 ), tag = AUTH_TAG)]
 /// Get details about the current user
-pub async fn get_user(jwt: Jwt, State(state): State<AxumApiState>) -> Result<UserDetailsResponse> {
+pub async fn get_user(jwt: Jwt, State(state): State<ApiState>) -> Result<UserDetailsResponse> {
     info!("{:?}", jwt);
     let user = jwt.claim.get_user(&state.pool).await?;
     let res = UserDetailsResponse {
@@ -36,7 +37,7 @@ pub async fn get_user(jwt: Jwt, State(state): State<AxumApiState>) -> Result<Use
 ), tag = AUTH_TAG)]
 /// Create a new user
 pub async fn create_user(
-    State(state): State<AxumApiState>,
+    State(state): State<ApiState>,
     Json(req): Json<CreateUserRequest>,
 ) -> Result<CreateUserResponse> {
     // Validate, then update
@@ -66,7 +67,7 @@ pub async fn create_user(
 ), tag = AUTH_TAG)]
 /// Log a user in. Expect to reuse the JWT for a duration.
 pub async fn login_user(
-    State(state): State<AxumApiState>,
+    State(state): State<ApiState>,
     Json(req): Json<UserLoginRequest>,
 ) -> Result<UserLoginResponse> {
     let user = User::by_email(req.email, &state.pool)
@@ -94,11 +95,11 @@ pub async fn login_user(
         user_id: claim.sub,
         valid: true,
     };
-    state
-        .session_cache
-        .insert(&claim.jti, session)
-        .await
-        .unwrap(); // only track sessions after creating the token for it
+    let jti = format_jti(&claim.jti);
+    let _: () = state
+        .kv
+        .set(jti, session.to_string()?, None, None, false)
+        .await?;
 
     let res = UserLoginResponse { token };
 
@@ -109,17 +110,10 @@ pub async fn login_user(
     (status = 200, description = "Successful session logout", body = SessionInvalidationResponse),
 ), tag = AUTH_TAG)]
 /// Log the current user out.
-pub async fn logout_user(
-    session: Session,
-    jwt: Jwt,
-    state: State<AxumApiState>,
-) -> Result<SessionInvalidationResponse> {
-    info!("{:?}", session);
-    state
-        .session_cache
-        .invalidate(&jwt.claim.jti)
-        .await
-        .unwrap();
+pub async fn logout_user(jwt: Jwt, state: State<ApiState>) -> Result<SessionInvalidationResponse> {
+    let jti = format_jti(&jwt.claim.jti);
+    info!("session_id={:?}", jti);
+    let _: () = state.kv.del(jti).await?;
 
     Ok(Json(SessionInvalidationResponse))
 }

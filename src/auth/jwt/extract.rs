@@ -1,6 +1,6 @@
 use crate::auth::Claim;
 use crate::error::AppError;
-use crate::state::AxumApiState;
+use crate::state::ApiState;
 use axum::extract::FromRequestParts;
 use axum::http::request::Parts;
 use axum_extra::TypedHeader;
@@ -16,12 +16,12 @@ pub struct Jwt {
     pub header: jsonwebtoken::Header,
 }
 
-impl FromRequestParts<AxumApiState> for Jwt {
+impl FromRequestParts<ApiState> for Jwt {
     type Rejection = AppError;
 
     async fn from_request_parts(
         parts: &mut Parts,
-        state: &AxumApiState,
+        state: &ApiState,
     ) -> Result<Self, Self::Rejection> {
         let header = TypedHeader::<BearerAuthorization>::from_request_parts(parts, &())
             .await

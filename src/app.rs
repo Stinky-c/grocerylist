@@ -1,4 +1,3 @@
-use crate::auth::MemorySessionCache;
 use crate::config::AppConfig;
 use crate::openapi::ApiDoc;
 use crate::routes;
@@ -34,6 +33,7 @@ pub async fn make_app() -> (Router, OpenApi) {
     let config = AppConfig::load();
 
     let pool = config.database().await;
+    let kv = config.kv().await;
 
     MIGRATOR.run(&pool).await.unwrap();
 
@@ -47,7 +47,7 @@ pub async fn make_app() -> (Router, OpenApi) {
         jwt_encode: Arc::new(jwt_enc),
         jwt_validation: Arc::new(validation),
         password_hasher: Arc::new(hasher),
-        session_cache: MemorySessionCache::new(),
+        kv,
     };
 
     // build our application with some routes
@@ -60,7 +60,7 @@ pub async fn make_app() -> (Router, OpenApi) {
             routes::auth::login_user,
             routes::auth::logout_user
         ))
-        .with_state(Arc::new(state))
+        .with_state(state)
         .split_for_parts();
 
     let app: Router = Router::new().nest("/api/v1/", router).layer((

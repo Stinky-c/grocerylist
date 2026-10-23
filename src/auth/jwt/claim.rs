@@ -9,7 +9,7 @@ use uuid::Uuid;
 pub struct Claim {
     /// The user subject. Also, the user_id.
     pub sub: Uuid,
-    /// Used for session cache lookups
+    /// Used for session cache lookups. See [crate::auth::session::Session]
     pub jti: Uuid,
     /// Unix timestamp expiry
     pub exp: u64,
